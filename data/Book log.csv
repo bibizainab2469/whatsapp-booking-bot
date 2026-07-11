@@ -1,0 +1,9 @@
+Timestamp,CustomerPhone,MessageText,Branch,MessageSID
+2026-06-23T11:25:11.283Z,whatsapp:+9***********,how much it cost man,Pricing,SM2d51510cc06379c849bfaa16395815f6
+2026-06-23T11:39:30.174Z,whatsapp:++9***********,I want to book a slot,Booking,SMe8552f93cadd8c9b179abaca2f3fb191
+2026-06-23T11:39:56.002Z,whatsapp:+9***********,Whats the cost for it,Pricing,SMc6b53444af11e2b79ab97c57f5d0eaac
+2026-06-29T09:14:33.867Z,whatsapp:+9***********,Hello business,Fallback,SMeeb3647a6ec749fe4a6252f754631555
+2026-06-29T09:21:23.649Z,whatsapp:+9***********,Book me a slot,Booking,SMf1b881e869e852a72f78652daddc2b77
+2026-06-29T09:21:46.159Z,whatsapp:+9***********,How much it would cost,Pricing,SM4bb430976250d44f63538dc7e584cd6a
+2026-06-29T09:22:05.159Z,whatsapp:+9***********,Is there any way to cancel this slot,Cancel,SMb3efaddcc1e698979b909ddb2dc8ba75
+2026-06-29T09:22:51.588Z,whatsapp:+9***********,Are you there,Fallback,SM646ae7d71084279e8080122e8a4c995f

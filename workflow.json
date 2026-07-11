@@ -1,0 +1,556 @@
+{
+  "name": "WF7 — WhatsApp Booking Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-booking",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -480,
+        192
+      ],
+      "id": "6b5faa81-7698-4a05-b129-8d815703f61a",
+      "name": "Webhook",
+      "webhookId": "618cf010-e0f5-448a-a2b6-c68657048690"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -256,
+        192
+      ],
+      "id": "640ca4e5-67ce-4e73-a441-8bbf44a3ca2a",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "29396657-a934-4db5-ba91-854cac442724",
+              "name": "CustomerPhone",
+              "value": "={{ $json.body.From }}",
+              "type": "string"
+            },
+            {
+              "id": "2ccd5fc4-8188-4b84-b858-b2133fd17159",
+              "name": "BusinessNumber",
+              "value": "={{ $json.body.To }}",
+              "type": "string"
+            },
+            {
+              "id": "73303efd-20c4-4fb5-877d-febceb0b630e",
+              "name": "MessageText",
+              "value": "={{ $json.body.Body }}",
+              "type": "string"
+            },
+            {
+              "id": "6b784d66-9c96-4412-a14d-e188d00763fc",
+              "name": "messageSid",
+              "value": "={{ $json.body.MessageSid }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -16,
+        192
+      ],
+      "id": "37caecc4-0a74-409e-9ec0-861eab89928d",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "url": "https://api.calendly.com/event_type_available_times",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "https://api.calendly.com/event_types/effea752-a164-4064-96ed-9eda811a1fb2"
+            },
+            {
+              "name": "start_time",
+              "value": "={{ new Date(Date.now() + 60*60*1000).toISOString() }}"
+            },
+            {
+              "name": "end_time",
+              "value": "={{ new Date(Date.now() + 7*24*60*60*1000).toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        400,
+        -64
+      ],
+      "id": "d9befdae-192c-4852-9ebd-10a25e1ee797",
+      "name": "Fetch Calendly Slots",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "tre7pbIo6yXyswCS",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const slots = $input.first().json.collection;\nconst top3 = slots.slice(0, 3);\n\nconst formatter = new Intl.DateTimeFormat('en-PK', {\n  timeZone: 'Asia/Karachi',\n  weekday: 'short',\n  month: 'short',\n  day: 'numeric',\n  hour: 'numeric',\n  minute: '2-digit',\n  hour12: true\n});\n\nconst formattedSlots = top3.map((slot, i) => {\n  const date = new Date(slot.start_time);\n  return `${i + 1}. ${formatter.format(date)}`;\n});\n\nconst bookingLinks = top3.map(slot => slot.scheduling_url);\n\nreturn [{\n  json: {\n    CustomerPhone: $('Edit Fields').first().json.CustomerPhone,\n    BusinessNumber: $('Edit Fields').first().json.BusinessNumber,\n    MessageText: $('Edit Fields').first().json.MessageText,\n    messageSid: $('Edit Fields').first().json.messageSid,\n    slotOptions: formattedSlots.join('\\n'),\n    bookingLinks: bookingLinks,\n    slot1Link: bookingLinks[0] || '',\n    slot2Link: bookingLinks[1] || '',\n    slot3Link: bookingLinks[2] || ''\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        -128
+      ],
+      "id": "1217535f-0781-4e1f-b89d-e950fa42b4c1",
+      "name": "Format Slot Options"
+    },
+    {
+      "parameters": {
+        "from": "=whatsapp:+14155238886",
+        "to": "={{ $('Edit Fields').first().json.CustomerPhone }}",
+        "message": "=Hi! Here are the next available slots:  {{ $json.slotOptions }}  Reply 1, 2, or 3 to confirm your booking — or tap a link to book directly: 1️⃣ {{ $json.slot1Link }} 2️⃣ {{ $json.slot2Link }} 3️⃣ {{ $json.slot3Link }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        768,
+        -16
+      ],
+      "id": "7b29e724-c351-4f37-8cd1-6dfbbdc2fe3f",
+      "name": "Send booking options",
+      "credentials": {
+        "twilioApi": {
+          "id": "YAYFsBlmexS7MDB9",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "whatsapp:+14155238886",
+        "to": "={{ $('Edit Fields').first().json.CustomerPhone }}",
+        "message": "=Hi! Here's our pricing:  \n💆 30-min session — AED 150 \n💆 60-min session — AED 250 \n💆 90-min session — AED 350 \nReply *BOOK* to schedule your appointment or ask us anything!",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        512,
+        96
+      ],
+      "id": "dea176b5-7690-47cb-b62a-a3abfe8214d2",
+      "name": "Send Pricing Reply",
+      "credentials": {
+        "twilioApi": {
+          "id": "YAYFsBlmexS7MDB9",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "whatsapp:+14155238886",
+        "to": "={{ $('Edit Fields').first().json.CustomerPhone }}",
+        "message": "=No problem! You can cancel or reschedule your appointment here: https://calendly.com/xainabh522\n\nNeed help? Reply HELP and a team member will get back to you shortly.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        656,
+        224
+      ],
+      "id": "ddea4a0e-c60f-4e99-b061-2af66c438b57",
+      "name": "Send Cancel Reply",
+      "credentials": {
+        "twilioApi": {
+          "id": "YAYFsBlmexS7MDB9",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "whatsapp:+14155238886",
+        "to": "={{ $('Edit Fields').first().json.CustomerPhone }}",
+        "message": "=We're sorry to make you wait, but you can manage a human assisstant to continue \n\nPlease reply with your booking reference number and we'll take care of it right away.\n\nOr call us directly at +971-XX-XXX-XXXX for immediate assistance.\n\nor for booking, price info or canelling , euse specific words. \n\nThanks.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        800,
+        352
+      ],
+      "id": "d8b38090-9dec-4ca4-a38b-c94e60c8ff15",
+      "name": "Send Fallback Reply",
+      "credentials": {
+        "twilioApi": {
+          "id": "YAYFsBlmexS7MDB9",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1KOD49MBKgc2lQMc-3HD19UYbMw2UT-tR6BN070AXckc/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ new Date().toISOString() }}",
+            "CustomerPhone": "={{ $('Edit Fields').first().json.CustomerPhone }}",
+            "MessageText": "={{ $('Edit Fields').first().json.MessageText }}",
+            "Branch": "={{ $('Edit Fields').first().json.MessageText.toLowerCase().includes('book') || $('Edit Fields').first().json.MessageText.toLowerCase().includes('appointment') || $('Edit Fields').first().json.MessageText.toLowerCase().includes('available') || $('Edit Fields').first().json.MessageText.toLowerCase().includes('schedule') ? 'Booking' : $('Edit Fields').first().json.MessageText.toLowerCase().includes('price') || $('Edit Fields').first().json.MessageText.toLowerCase().includes('cost') || $('Edit Fields').first().json.MessageText.toLowerCase().includes('how much') || $('Edit Fields').first().json.MessageText.toLowerCase().includes('rates') ? 'Pricing' : $('Edit Fields').first().json.MessageText.toLowerCase().includes('cancel') || $('Edit Fields').first().json.MessageText.toLowerCase().includes('reschedule') || $('Edit Fields').first().json.MessageText.toLowerCase().includes('change my') ? 'Cancel' : 'Fallback' }}",
+            "MessageSID": "={{ $('Edit Fields').first().json.messageSid }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "CustomerPhone",
+              "displayName": "CustomerPhone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "MessageText",
+              "displayName": "MessageText",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Branch",
+              "displayName": "Branch",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "MessageSID",
+              "displayName": "MessageSID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1024,
+        128
+      ],
+      "id": "5c3b5780-8125-4a20-aedd-a1ec289b5483",
+      "name": "Log to sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bbRqllPqrpIHjgfS",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "018a42d1-f0f7-4a49-b5cf-777e647b8b7a",
+                    "leftValue": "={{ $json.MessageText.toLowerCase().includes('book') || $json.MessageText.toLowerCase().includes('appointment') || $json.MessageText.toLowerCase().includes('available') || $json.MessageText.toLowerCase().includes('schedule') || $json.MessageText.toLowerCase().includes('when can') }}",
+                    "rightValue": "=true",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Booking"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "821955d3-deba-432a-88dc-f78317173b95",
+                    "leftValue": "={{ $json.MessageText.toLowerCase().includes('price') || $json.MessageText.toLowerCase().includes('cost') || $json.MessageText.toLowerCase().includes('how much') || $json.MessageText.toLowerCase().includes('rates') }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Pricing"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "5b37eea8-43e3-4b34-9ec9-92854a2a5020",
+                    "leftValue": "={{ $json.MessageText.toLowerCase().includes('cancel') || $json.MessageText.toLowerCase().includes('reschedule') || $json.MessageText.toLowerCase().includes('change my') }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cancel"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        176,
+        80
+      ],
+      "id": "85a257de-6f10-4733-b907-fa2a61515c2b",
+      "name": "Intent detection Switcher"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Intent detection Switcher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Calendly Slots": {
+      "main": [
+        [
+          {
+            "node": "Format Slot Options",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slot Options": {
+      "main": [
+        [
+          {
+            "node": "Send booking options",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Pricing Reply": {
+      "main": [
+        [
+          {
+            "node": "Log to sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to sheet": {
+      "main": [
+        []
+      ]
+    },
+    "Intent detection Switcher": {
+      "main": [
+        [
+          {
+            "node": "Fetch Calendly Slots",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Pricing Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Cancel Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Fallback Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send booking options": {
+      "main": [
+        [
+          {
+            "node": "Log to sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Cancel Reply": {
+      "main": [
+        [
+          {
+            "node": "Log to sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Fallback Reply": {
+      "main": [
+        [
+          {
+            "node": "Log to sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "e3f11bc2-c439-46d8-a52a-625da31d4381",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1c246aa2943d677270b5da800a0f25ad2bdb6ce7a5c86d2fa88832406fb20fd4"
+  },
+  "nodeGroups": [],
+  "id": "7CtFNyl59IxvhZTq",
+  "tags": []
+}
